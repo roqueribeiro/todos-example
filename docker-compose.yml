@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: todo-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-todo}
+      POSTGRES_USER: ${DB_USER:-todo}
+      POSTGRES_PASSWORD: ${DB_PASS:-todo}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-todo} -d ${DB_NAME:-todo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: todo-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-todo}
+      DB_PASS: ${DB_PASS:-todo}
+      DB_NAME: ${DB_NAME:-todo}
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    container_name: todo-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:
